@@ -1,5 +1,5 @@
 #ezAR Flashlight Cordova Plugin
-xxxx
+Control the on/off state of the lights on a mobile device.
 
 ##Supported Platforms
 - iOS 7, 8 & 9
@@ -12,16 +12,19 @@ Add the flashlight plugin to your Corodva project the Cordova CLI
 
 Next in your Cordova JavaScript deviceready handler include the following JavaScript snippet to initialize ezAR and activate the camera on the back of the device.
 
-        ezar.snapshot(
-            function(image) {
-                //do something with the image
+        ezar.initializeLights(
+            function(deviceLightInfo) {
+                //do something with the info {front: true, back: true}
                 },
             function(err) {
-                alert('snapshot error: ' + err);
-                },       
-            {"saveToPhotoAlbum":true,
-             "encoding": ezAR.ImageEncoding.PNG}
-            )
+                alert('Initialization error: ' + err);
+                });
+        
+        if (ezarHasBackLight()) {
+            ezar.setBackLightOn(successCallback,errorCallback);
+        }
+        
+        ezar.setCurrentLightOff(successCallback,errorCallback);
                     
 ##Additional Documentation        
 See [ezartech.com](http://ezartech.com) for documentation and support.
