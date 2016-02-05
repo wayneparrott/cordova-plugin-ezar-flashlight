@@ -11,25 +11,6 @@
 var exec = require('cordova/exec'),
     utils = require('cordova/utils');
 
-/**
- * Manages a mobile device camera
- * @class
- * 
- * Created by ezar during initialization. Do not use directly.
- * 
- * @param {ezAR} ezar  protected 
- * @param {string} id  unique camera id assigned by the device os
- * @param {string} position  side of the device the camera resides, BACK
- * 			faces away from the user, FRONT faces the user
- * @param {boolean} hasZoom  true if the camera's magnification can be changed
- * @param {float} zoom  current magnification level of the camera up 
- * 			to the maxZoom
- * @param {boolean} hasLight true when the device has a light on the
- * 			same side as the camera position; false otherwise
- * @param {integer} light  if the device has a light on the same side 
- * 			(position) as the camera then 1 turns on the device light, 
- * 			0 turns the light off
- */
 module.exports = (function() {
 	 //--------------------------------------
     var BACK = 0, FRONT = 1; //light locations
@@ -44,8 +25,26 @@ module.exports = (function() {
     _flashlight.areLightsInitialized = function() {
         return _isInitialized;
     }
-   
-  
+
+	/**
+	* Manages a mobile device lights
+	* @class
+	* 
+	* Created by ezar flashlight during initialization. Do not use directly.
+	* 
+	* @param {ezAR} ezar  protected 
+	* @param {string} id  unique camera id assigned by the device os
+	* @param {string} position  side of the device the camera resides, BACK
+	* 			faces away from the user, FRONT faces the user
+	* @param {boolean} hasZoom  true if the camera's magnification can be changed
+	* @param {float} zoom  current magnification level of the camera up 
+	* 			to the maxZoom
+	* @param {boolean} hasLight true when the device has a light on the
+	* 			same side as the camera position; false otherwise
+	* @param {integer} light  if the device has a light on the same side 
+	* 			(position) as the camera then 1 turns on the device light, 
+	* 			0 turns the light off
+	*/  
     _flashlight.initializeLights = function(successCallback,errorCallback) {
         //execute successCallback immediately if already initialized
     	if (_flashlight.areLightsInitialized()) {
@@ -70,40 +69,64 @@ module.exports = (function() {
              errorCallback,
             "flashlight",
             "init",
-            []);
+            [isVideoOverlayInstalled(), getVideoOverlayRunningCameraLocation()]);
     }
 	
     
-    
-     _flashlight.hasFrontLight = function() {
-		 return _frontLightState != UNDEFINED;
-	 }
+    /**
+	 * 
+	 */
+    _flashlight.hasFrontLight = function() {
+		return _frontLightState != UNDEFINED;
+	}
 	 
-    
- 	
+    /**
+	 * 
+	 */
 	 _flashlight.hasBackLight = function() {
 		 return _backLightState != UNDEFINED;
 	 }
 	 
 
+	 /**
+	  * 
+	  */
 	 _flashlight.isBackLightOn = function() {
 		 return _backLightState == ON;
 	 }
 	 
-
+	 /**
+	  * 
+	  */
 	 _flashlight.isFrontLightOn = function() {
 		 return _frontLightState == ON;
 	 }
 	 
-
+	 /**
+	  * 
+	  */
      _flashlight.setBackLightOn = function(successCallback,errorCallback) {
 		 updateLight(BACK,ON,successCallback,errorCallback);
 	 }
 	 
+	 /**
+	  * 
+	  */
 	 _flashlight.setFrontLightOn = function(successCallback,errorCallback) {
 		 updateLight(FRONT,ON,successCallback,errorCallback);
 	 }
-  
+     
+     /**
+	 * 
+	 */
+	_flashlight.setCurrentLightOff = function(successCallback,errorCallback) {
+		var curLightOn = getCurrentOnLight();
+		if (curLightOn==UNDEFINED) return;
+		
+		updateLight(curLightOn,OFF,successCallback,errorCallback);
+	}
+
+
   	function getCurrentOnLight() {
 		  if (_flashlight.isFrontLightOn()) {
 			  return FRONT;
@@ -113,14 +136,6 @@ module.exports = (function() {
 		  
 		  return UNDEFINED;
 	  }
-
-	_flashlight.setCurrentLightOff = function(successCallback,errorCallback) {
-		var curLightOn = getCurrentOnLight();
-		if (curLightOn==UNDEFINED) return;
-		
-		updateLight(curLightOn,OFF,successCallback,errorCallback);
-	}
-
  
 	function updateLight(lightPosition, onOffState, successCallback,errorCallback) {
 		if (lightPosition == BACK) {
@@ -129,7 +144,6 @@ module.exports = (function() {
 				if (isFunction(successCallback)) successCallback();
 				return;	
 			}
-			
 		}
 		
 		if (lightPosition == FRONT) {
@@ -138,8 +152,9 @@ module.exports = (function() {
 				if (isFunction(successCallback)) successCallback();
 				return;
 			}
-		}
+		} 
 				
+        //set default state
 		_frontLightState = _frontLightState == UNDEFINED ? UNDEFINED : OFF;
 		_backLightState = _backLightState == UNDEFINED ? UNDEFINED : OFF;
 		 
@@ -159,7 +174,7 @@ module.exports = (function() {
              errorCallback,
             "flashlight",
             "updateLight",
-            [lightPosition,onOffState]);
+            [lightPosition, onOffState, getVideoOverlayRunningCameraLocation()]);
 	 }        
       
        
@@ -167,6 +182,27 @@ module.exports = (function() {
     	return typeof f == "function";
 	}
   
+    function isAndroidPlatform() {
+        return window.cordova.platformId == "android";
+    }
+    
+    function isVideoOverlayInstalled() {
+        return !!window.ezar["initializeVideoOverlay"]
+    }
+    
+    function isVideoOverlayRunning() {
+        if (!isVideoOverlayInstalled) return false;
+        
+        return window.ezar.hasActiveCamera();
+    }
+    
+    function getVideoOverlayRunningCameraLocation() {
+        if (!isVideoOverlayRunning) return UNDEFINED;
+        
+        //todo access & return the running camera location
+        
+        return UNDEFINED
+    }
 	
 	return _flashlight;
 }())
