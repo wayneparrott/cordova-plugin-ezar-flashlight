@@ -14,8 +14,10 @@
 #import "CDVezARFlashlight.h"
 
 
-const int BACKLIGHT = 0;
-const int FRONTLIGHT = 1;
+const int BACK_LIGHT = 0;
+const int FRONT_LIGHT = 1;
+const int LIGHT_OFF = 0;
+const int LIGHT_ON = 1;
 
 @implementation CDVezARFlashlight
 {
@@ -74,12 +76,12 @@ const int FRONTLIGHT = 1;
 {
     NSNumber* lightLocArg = [command.arguments objectAtIndex:0];
     int lightLoc = (int)[lightLocArg integerValue];
-    AVCaptureDevice* light = lightLoc == 0 ? backLight : frontLight;
+    AVCaptureDevice* light = lightLoc == BACK ? backLight : frontLight;
     AVCaptureDevice* otherLight = light == backLight ? frontLight : backLight;
 
     NSNumber* newLightStateArg = [command.arguments objectAtIndex:1];
     int newLightState = (int)[newLightStateArg integerValue];
-    AVCaptureTorchMode torchMode = newLightState == 0 ? AVCaptureTorchModeOff : AVCaptureTorchModeOn;
+    AVCaptureTorchMode torchMode = newLightState == LIGHT_OFF ? AVCaptureTorchModeOff : AVCaptureTorchModeOn;
     
     if (!light) {
         //error, invalid light referenced
@@ -90,8 +92,8 @@ const int FRONTLIGHT = 1;
     }
     
     //check for NOP
-    if ((lightLoc == BACKLIGHT && backLightState == newLightState) ||
-        (lightLoc == FRONTLIGHT && frontLightState == newLightState)) {
+    if ((lightLoc == BACK_LIGHT && backLightState == newLightState) ||
+        (lightLoc == FRONT_LIGHT && frontLightState == newLightState)) {
         //light is already in newLightState, i.e. NOP
         CDVPluginResult* pluginResult =
             [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
@@ -101,15 +103,15 @@ const int FRONTLIGHT = 1;
     
     //check if otherLight needs to be turned off before setting newLightState
     if (otherLight && 
-        ((otherLight==frontLight && frontLightState==1) ||
-         (otherLight==backLight && backLightState==1))) {
+        ((otherLight==frontLight && frontLightState==LIGHT_ON) ||
+         (otherLight==backLight && backLightState==LIGHT_ON))) {
         BOOL success = [otherLight lockForConfiguration:nil];
         if (success) {  
           [otherLight setTorchMode: AVCaptureTorchModeOff];
           [otherLight unlockForConfiguration];
          }
-         if (otherLight == frontLight) frontLightState = 0;
-         else if (otherLight == backLight) backLightState = 0;
+         if (otherLight == frontLight) frontLightState = LIGHT_OFF;
+         else if (otherLight == backLight) backLightState = LIGHT_OFF;
     }
     
     BOOL success = [light lockForConfiguration:nil];
