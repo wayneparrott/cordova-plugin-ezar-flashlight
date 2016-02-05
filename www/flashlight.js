@@ -69,7 +69,7 @@ module.exports = (function() {
              errorCallback,
             "flashlight",
             "init",
-            []);
+            [isVideoOverlayInstalled(), getVideoOverlayRunningCameraLocation()]);
     }
 	
     
@@ -115,7 +115,17 @@ module.exports = (function() {
 	 _flashlight.setFrontLightOn = function(successCallback,errorCallback) {
 		 updateLight(FRONT,ON,successCallback,errorCallback);
 	 }
-  
+     
+     /**
+	 * 
+	 */
+	_flashlight.setCurrentLightOff = function(successCallback,errorCallback) {
+		var curLightOn = getCurrentOnLight();
+		if (curLightOn==UNDEFINED) return;
+		
+		updateLight(curLightOn,OFF,successCallback,errorCallback);
+	}
+
 
   	function getCurrentOnLight() {
 		  if (_flashlight.isFrontLightOn()) {
@@ -126,17 +136,6 @@ module.exports = (function() {
 		  
 		  return UNDEFINED;
 	  }
-
-	/**
-	 * 
-	 */
-	_flashlight.setCurrentLightOff = function(successCallback,errorCallback) {
-		var curLightOn = getCurrentOnLight();
-		if (curLightOn==UNDEFINED) return;
-		
-		updateLight(curLightOn,OFF,successCallback,errorCallback);
-	}
-
  
 	function updateLight(lightPosition, onOffState, successCallback,errorCallback) {
 		if (lightPosition == BACK) {
@@ -145,7 +144,6 @@ module.exports = (function() {
 				if (isFunction(successCallback)) successCallback();
 				return;	
 			}
-			
 		}
 		
 		if (lightPosition == FRONT) {
@@ -154,8 +152,9 @@ module.exports = (function() {
 				if (isFunction(successCallback)) successCallback();
 				return;
 			}
-		}
+		} 
 				
+        //set default state
 		_frontLightState = _frontLightState == UNDEFINED ? UNDEFINED : OFF;
 		_backLightState = _backLightState == UNDEFINED ? UNDEFINED : OFF;
 		 
@@ -175,7 +174,7 @@ module.exports = (function() {
              errorCallback,
             "flashlight",
             "updateLight",
-            [lightPosition,onOffState]);
+            [lightPosition, onOffState, getVideoOverlayRunningCameraLocation()]);
 	 }        
       
        
@@ -183,6 +182,27 @@ module.exports = (function() {
     	return typeof f == "function";
 	}
   
+    function isAndroidPlatform() {
+        return window.cordova.platformId == "android";
+    }
+    
+    function isVideoOverlayInstalled() {
+        return !!window.ezar["initializeVideoOverlay"]
+    }
+    
+    function isVideoOverlayRunning() {
+        if (!isVideoOverlayInstalled) return false;
+        
+        return window.ezar.hasActiveCamera();
+    }
+    
+    function getVideoOverlayRunningCameraLocation() {
+        if (!isVideoOverlayRunning) return UNDEFINED;
+        
+        //todo access & return the running camera location
+        
+        return UNDEFINED
+    }
 	
 	return _flashlight;
 }())
