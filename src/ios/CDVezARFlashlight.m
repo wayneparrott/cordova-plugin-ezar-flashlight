@@ -21,11 +21,8 @@ const int LIGHT_ON = 1;
 
 @implementation CDVezARFlashlight
 {
-    AVCaptureDevice* frontLight;
-    AVCaptureDevice* backLight;
-    
-    int frontLightState;
-    int backLightState;
+    AVCaptureDevice* light;
+    int lightState;
 }
 
 // INIT PLUGIN - does nothing atm
@@ -41,7 +38,6 @@ const int LIGHT_ON = 1;
 - (void)init:(CDVInvokedUrlCommand*)command
 {
     NSMutableDictionary* lightsInfo = [NSMutableDictionary dictionaryWithCapacity:4];
-    [lightsInfo setObject: @NO forKey:@"front"];
     [lightsInfo setObject: @NO forKey:@"back"];
     
     NSError *error;
@@ -52,12 +48,10 @@ const int LIGHT_ON = 1;
             continue;
         
         if ([device position] == AVCaptureDevicePositionBack) {
-            backLight = device;
+            light = device;
             [lightsInfo setObject: @YES forKey:@"back"];
-        } else if ([device position] == AVCaptureDevicePositionFront) {
-            frontLight = device;
-            [lightsInfo setObject: @YES forKey:@"front"];
         }
+        
     }
     
    NSMutableDictionary* immutableLightsInfo =
@@ -70,57 +64,27 @@ const int LIGHT_ON = 1;
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
-//var BACK = 0, FRONT = 1; //light locations
+
 //var OFF = 0, ON = 1;     //light states
 - (void)updateLight:(CDVInvokedUrlCommand*)command
 {
-    NSNumber* lightLocArg = [command.arguments objectAtIndex:0];
-    int lightLoc = (int)[lightLocArg integerValue];
-    AVCaptureDevice* light = lightLoc == BACK ? backLight : frontLight;
-    AVCaptureDevice* otherLight = light == backLight ? frontLight : backLight;
-
-    NSNumber* newLightStateArg = [command.arguments objectAtIndex:1];
+    NSNumber* newLightStateArg = [command.arguments objectAtIndex:0];
     int newLightState = (int)[newLightStateArg integerValue];
     AVCaptureTorchMode torchMode = newLightState == LIGHT_OFF ? AVCaptureTorchModeOff : AVCaptureTorchModeOn;
     
     if (!light) {
         //error, invalid light referenced
         CDVPluginResult* pluginResult =
-            [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString: @"Invalid light identifier, no such light found"];
+            [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString: @"Unable to access light."];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         return;
     }
     
-    //check for NOP
-    if ((lightLoc == BACK_LIGHT && backLightState == newLightState) ||
-        (lightLoc == FRONT_LIGHT && frontLightState == newLightState)) {
-        //light is already in newLightState, i.e. NOP
-        CDVPluginResult* pluginResult =
-            [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-        return;        
-    }
-    
-    //check if otherLight needs to be turned off before setting newLightState
-    if (otherLight && 
-        ((otherLight==frontLight && frontLightState==LIGHT_ON) ||
-         (otherLight==backLight && backLightState==LIGHT_ON))) {
-        BOOL success = [otherLight lockForConfiguration:nil];
-        if (success) {  
-          [otherLight setTorchMode: AVCaptureTorchModeOff];
-          [otherLight unlockForConfiguration];
-         }
-         if (otherLight == frontLight) frontLightState = LIGHT_OFF;
-         else if (otherLight == backLight) backLightState = LIGHT_OFF;
-    }
     
     BOOL success = [light lockForConfiguration:nil];
     if (success) {  
         [light setTorchMode:torchMode];
         [light unlockForConfiguration];
-        if (light == frontLight) frontLightState = newLightState;
-         else if (light == backLight) backLightState = newLightState;
-         
     } else {
         //error, 
         CDVPluginResult* pluginResult =
@@ -134,5 +98,6 @@ const int LIGHT_ON = 1;
     
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
+
 
 @end
