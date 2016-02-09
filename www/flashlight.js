@@ -57,6 +57,9 @@ module.exports = (function() {
 			//todo init state here
 			_lightState = lightData.back ? LIGHT_OFF : UNDEFINED;
 			
+			document.addEventListener("pause", onPause, false);
+			document.addEventListener("resume", onResume, false);
+			
             if (successCallback) {
                 successCallback();
             }
@@ -69,6 +72,22 @@ module.exports = (function() {
             []);
     }
 	
+	function onPause() {
+		if (_lightState == LIGHT_ON) {
+			_flashlight.setLightOff(
+			    function(result) {
+					_lightState = LIGHT_ON;
+				});
+		}
+	}
+	
+	function onResume() {
+		if (_lightState == LIGHT_ON) {
+			_lightState = LIGHT_OFF;
+			_flashlight.setLightOn();	
+		}
+		
+	}
     	 
     /**
 	 * 
