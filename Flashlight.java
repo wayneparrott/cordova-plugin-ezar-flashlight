@@ -32,23 +32,27 @@ import android.util.Log;
 
 
 /**
- *
+ * This class echoes a string called from JavaScript.
  */
 public class Flashlight extends CordovaPlugin {
 	private static final String TAG = "Flashlight";
     
     static final int UNDEFINED  = -1;
+    static final int BACK_LIGHT = 0;
+    static final int FRONT_LIGHT= 1;
 	static final int LIGHT_OFF  = 0;
 	static final int LIGHT_ON   = 1;
 
-    private int cameraId   = UNDEFINED;
-    private int lightState 	= LIGHT_OFF;
+    private int frontCameraId   = UNDEFINED;
+	private int backCameraId    = UNDEFINED;
+    private int backLightState 	= LIGHT_OFF;
+    private int frontLightState = LIGHT_OFF;
 
 	private int activeLightCameraId = UNDEFINED;
 	private Camera localPreviewCamera = null;
 
-	private boolean isPaused = false;
 	//------------ vo support ---------
+
 	private int voCameraDir = UNDEFINED;	//updated by VO start/stop events
     private int voCameraId = UNDEFINED; 	//updated by VO start/stop events
 	private Camera voCamera = null; 		//updated by VO start/stop events
@@ -64,14 +68,19 @@ public class Flashlight extends CordovaPlugin {
 		Log.v(TAG, action + " " + args.length());
 
 		if (action.equals("init")) {
+			//JPG: 0, PNG: 1
+            //save to gallery
 			this.init(callbackContext);
+//			this.init(args, callbackContext);
+			return true;
 		} else if (action.equals("updateLight")) {
+			//JPG: 0, PNG: 1
+            //save to gallery
             this.updateLight(args, callbackContext);
-		} else {
-			return false;
+			return true;
 		}
 
-		return true;
+		return false;
 	}
 
 	private void init(final CallbackContext callbackContext) {
@@ -79,6 +88,7 @@ public class Flashlight extends CordovaPlugin {
 		JSONObject jsonResult = new JSONObject();
 
 		try {
+			jsonResult.put("front",false);
 			jsonResult.put("back",false);
 
 			int mNumberOfCameras = Camera.getNumberOfCameras();
@@ -86,10 +96,6 @@ public class Flashlight extends CordovaPlugin {
 			Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
 			for (int id = 0; id < mNumberOfCameras; id++) {
 				Camera.getCameraInfo(id, cameraInfo);
-
-				if (cameraInfo.facing != CameraInfo.CAMERA_FACING_BACK) {
-					continue;
-				}
 
 				Parameters parameters;
 				Camera camera = null;
@@ -114,9 +120,16 @@ public class Flashlight extends CordovaPlugin {
 					boolean hasLight = torchModes != null && torchModes.contains(Parameters.FLASH_MODE_TORCH);
 
 					if (hasLight) {
-						String key="back";
-						cameraId = id;
-;
+						String key=null;
+
+						if (cameraInfo.facing == CameraInfo.CAMERA_FACING_BACK) {
+							backCameraId = id;
+							key = "back";
+						} else {
+							frontCameraId = id;
+							key = "front";
+						}
+
 						jsonResult.put(key,true);
 					}
 
@@ -143,12 +156,13 @@ public class Flashlight extends CordovaPlugin {
 	private void updateLight(final JSONArray args, final CallbackContext callbackContext) {
 
 		try {
-			int newLightState = args.getInt(0);
+			int lightLoc = lightLoc = args.getInt(0);
+			int newLightState = args.getInt(1);
 
 			if (isVOInstalled()) {
-				updateLightWithVO(newLightState, callbackContext);
+				updateLightWithVO(lightLoc, newLightState, callbackContext);
 			} else {
-				updateLight(newLightState, callbackContext);
+				updateLight(lightLoc, newLightState, callbackContext);
 			}
 
 		} catch (JSONException e1) {
@@ -162,8 +176,24 @@ public class Flashlight extends CordovaPlugin {
 	//  voInstalled is true
 	//  voCamera == null -> no camera running atm so defer setting light
 	//
-	private void updateLightWithVO(int newLightState, final CallbackContext callbackContext) {
+	private void updateLightWithVO(int lightLoc, int newLightState, final CallbackContext callbackContext) {
 		Camera releaseableCamera = null;
+		int cameraId = UNDEFINED;
+		int otherCameraId = UNDEFINED;
+
+
+		if (lightLoc == BACK_LIGHT && backCameraId != UNDEFINED) {
+			cameraId = backCameraId;
+			otherCameraId = frontCameraId;
+		} else if (lightLoc == FRONT_LIGHT && frontCameraId != UNDEFINED) {
+			cameraId = frontCameraId;
+			otherCameraId = backCameraId;
+		} else {
+			if (callbackContext != null) {
+				callbackContext.error("Light does not exist.");
+			}
+			return;
+		}
 
 		if (voCameraId != UNDEFINED && voCameraId != cameraId) {
 			//not allowed to set light to different side of device than running camera
@@ -174,16 +204,24 @@ public class Flashlight extends CordovaPlugin {
 			return;
 		}
 
-		boolean isDeferred = (voCamera == null); //defer setting
-		lightState = newLightState;
+		activeLightCameraId = cameraId;
+		if (activeLightCameraId == frontCameraId) {
+			frontLightState = newLightState;
+			if (backLightState != UNDEFINED) backLightState = (newLightState+1) % 2;
+		} else {
+			backLightState = newLightState;
+			if (frontLightState != UNDEFINED) frontLightState = (newLightState+1) % 2;
+		}
 
-		if (isDeferred && newLightState == LIGHT_OFF) {
+		boolean deferred = voCamera == null; //defer setting
+
+		if (deferred && newLightState == LIGHT_OFF) {
 			//SPECIAL CASE: force the light off for devices that can run light without camera running
-			updateLight(LIGHT_OFF,null);
+			updateLight(lightLoc,LIGHT_OFF,null);
 			return;
 		}
 
-		if (!isDeferred) { //deferred start
+		if (!deferred) { //deferred start
 			//update Light
 			Parameters parameters;
 			parameters = voCamera.getParameters();
@@ -198,41 +236,72 @@ public class Flashlight extends CordovaPlugin {
 		}
 	}
 
-	private void updateLight(int newLightState, final CallbackContext callbackContext) {
+	private void updateLightIfDeferred() {
+
+	}
+
+	private void updateLight(int lightLoc, int newLightState, final CallbackContext callbackContext) {
 		Camera releaseableCamera = null;
+			int cameraId = UNDEFINED;
+			int otherCameraId = UNDEFINED;
 
-		try {
-			lightState = newLightState;
-
-			if (localPreviewCamera == null) {
-				localPreviewCamera = Camera.open(cameraId);
+			if (lightLoc == BACK_LIGHT && backCameraId != UNDEFINED) {
+				cameraId = backCameraId;
+				otherCameraId = frontCameraId;
+			} else if (lightLoc == FRONT_LIGHT && frontCameraId != UNDEFINED) {
+				cameraId = frontCameraId;
+				otherCameraId = backCameraId;
+			} else {
+				if (callbackContext != null) {
+					callbackContext.error("Invalid camera referenced");
+				}
+				return;
 			}
-			Parameters parameters;
-			parameters = localPreviewCamera.getParameters();
-			parameters.setFlashMode(newLightState == LIGHT_ON ?
-					Parameters.FLASH_MODE_TORCH :
-					Parameters.FLASH_MODE_OFF);
-			localPreviewCamera.setParameters(parameters);
 
-			if (localPreviewCamera != null) {
-				if (newLightState == LIGHT_ON) {
-					localPreviewCamera.startPreview();
-				} else {
-					localPreviewCamera.stopPreview();
-					releaseableCamera = localPreviewCamera;
-					localPreviewCamera = null;
+			//turn off current light if its state == LIGHT_ON
+			if (activeLightCameraId != UNDEFINED && activeLightCameraId != cameraId) {
+				if (activeLightCameraId == backCameraId && backLightState == LIGHT_ON) {
+					//turn light off before turning on new light
+					updateLight(BACK_LIGHT,LIGHT_OFF,null);
+				} else if (activeLightCameraId == frontCameraId && frontLightState == LIGHT_ON) {
+					//turn light off before turning on new light
+					updateLight(FRONT_LIGHT,LIGHT_OFF,null);
 				}
 			}
 
-		} finally {
-			if (releaseableCamera != null) {
-				releaseableCamera.release();
-			}
-		}
+			try {
 
-		if (callbackContext != null) {
-			callbackContext.success();
-		}
+				if (localPreviewCamera == null) {
+					localPreviewCamera = Camera.open(cameraId);
+					activeLightCameraId = cameraId; //CONFIRM THIS IS CORRECT?????
+				}
+				Parameters parameters;
+				parameters = localPreviewCamera.getParameters();
+				parameters.setFlashMode(newLightState == LIGHT_ON ?
+						Parameters.FLASH_MODE_TORCH :
+						Parameters.FLASH_MODE_OFF);
+				localPreviewCamera.setParameters(parameters);
+
+				if (localPreviewCamera != null) {
+					if (newLightState == LIGHT_ON) {
+						localPreviewCamera.startPreview();
+					} else {
+						localPreviewCamera.stopPreview();
+						releaseableCamera = localPreviewCamera;
+						localPreviewCamera = null;
+						activeLightCameraId = UNDEFINED;
+					}
+				}
+
+			} finally {
+				if (releaseableCamera != null) {
+					releaseableCamera.release();
+				}
+			}
+
+			if (callbackContext != null) {
+				callbackContext.success();
+			}
 	}
 
 
@@ -240,13 +309,6 @@ public class Flashlight extends CordovaPlugin {
 	public void onPause(boolean multitasking) {
 		super.onPause((multitasking));
 
-		isPaused = true;
-		if (lightState == LIGHT_ON) {
-			if (localPreviewCamera != null) {
-				updateLight(LIGHT_OFF,null);
-				lightState = LIGHT_ON;
-			}
-		}
 		//todo: turn off light & release camera
 	}
 
@@ -254,18 +316,14 @@ public class Flashlight extends CordovaPlugin {
 	public void onResume(boolean multitasking) {
 		super.onResume(multitasking);
 
-		if (isPaused) {
-			if (lightState == LIGHT_ON) {
-				if (isVOInstalled()) {
-					updateLightWithVO(LIGHT_ON,null);
-				} else {
-					updateLight(LIGHT_ON,null);
-				}
-			}
-		}
-		isPaused = false;
-
 		//todo: reacquire camera and setup light
+	}
+
+	private int getLightLocation(int cameraId) {
+		if (cameraId == UNDEFINED) return UNDEFINED;
+		if (cameraId == frontCameraId) return FRONT_LIGHT;
+		if (cameraId == backCameraId) return BACK_LIGHT;
+		return UNDEFINED;
 	}
 
 	//------------------------------------------------------------------
@@ -281,15 +339,51 @@ public class Flashlight extends CordovaPlugin {
 		return getVideoOverlayPlugin() != null;
 	}
 
+	private Camera getActiveVideoOverlayCamera(int lightLoc) {
+		Camera camera = null;
+
+		CordovaPlugin videoOverlayPlugin = getVideoOverlayPlugin();
+		if (videoOverlayPlugin == null) {
+			return camera;
+		}
+
+		String methodName = lightLoc == BACK_LIGHT ? "getBackCamera" : "getFrontCamera";
+		Method method = null;
+
+		try {
+			method = videoOverlayPlugin.getClass().getMethod(methodName);
+		} catch (SecurityException e) {
+			//e.printStackTrace();
+		} catch (NoSuchMethodException e) {
+			//e.printStackTrace();
+		}
+
+		try {
+			if (method != null) {
+				camera = (Camera)method.invoke(videoOverlayPlugin);
+			}
+		} catch (IllegalArgumentException e) { // exception handling omitted for brevity
+			//e.printStackTrace();
+		} catch (IllegalAccessException e) { // exception handling omitted for brevity
+			//e.printStackTrace();
+		} catch (InvocationTargetException e) { // exception handling omitted for brevity
+			//e.printStackTrace();
+		}
+
+		return camera;
+	}
+
+
 	public void videoOverlayStarted(int voCameraDir, int voCameraId, Camera voCamera) {
 		this.voCameraDir = voCameraDir;
 		this.voCameraId = voCameraId;
 		this.voCamera = voCamera;
 
-		if (lightState == LIGHT_ON) {
-			updateLightWithVO(LIGHT_ON, null);
+		if (backLightState == LIGHT_ON) {
+			updateLightWithVO(BACK_LIGHT,LIGHT_ON,null);
+		} else if  (frontLightState == LIGHT_ON) {
+			updateLightWithVO(FRONT_LIGHT,LIGHT_ON,null);
 		}
-
 	}
 
 	public void videoOverlayStopped(int voCameraDir, int voCameraId, Camera voCamera) {
@@ -300,9 +394,12 @@ public class Flashlight extends CordovaPlugin {
 		//apply rule that light can not be on unless camera is running
 		//so turn active light off but reset the light back to its LIGHT_ON deferred state
 		// and it will turn back on when camera is restarted. User must turn the light off explicitly.
-		if (lightState == LIGHT_ON) {
-			updateLightWithVO(LIGHT_OFF, null);
-			lightState = LIGHT_ON; //set light back on until user turns it off
+		if (backLightState == LIGHT_ON) {
+			updateLightWithVO(BACK_LIGHT,LIGHT_OFF,null);
+			backLightState = LIGHT_ON; //set light back on until user turns it off
+		} else if  (frontLightState == LIGHT_ON) {
+			updateLightWithVO(FRONT_LIGHT,LIGHT_OFF,null);
+			frontLightState = LIGHT_ON; //set light back on until user turns it off
 		}
 	}
 
