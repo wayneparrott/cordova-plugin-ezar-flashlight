@@ -20,15 +20,23 @@ import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
 import org.apache.cordova.CordovaWebViewImpl;
 import org.apache.cordova.PluginManager;
+import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Parameters;
 
 import android.util.Log;
+import android.view.TextureView;
+import android.view.ViewGroup;
+import android.webkit.WebView;
 
 
 /**
@@ -44,8 +52,11 @@ public class Flashlight extends CordovaPlugin {
     private int cameraId   = UNDEFINED;
     private int lightState 	= LIGHT_OFF;
 
+	private CallbackContext callbackContext;
+
 	private int activeLightCameraId = UNDEFINED;
 	private Camera localPreviewCamera = null;
+	private SurfaceTexture hiddenSurfaceTexture;
 
 	private boolean isPaused = false;
 	//------------ vo support ---------
@@ -53,10 +64,14 @@ public class Flashlight extends CordovaPlugin {
     private int voCameraId = UNDEFINED; 	//updated by VO start/stop events
 	private Camera voCamera = null; 		//updated by VO start/stop events
 
+	protected final static String[] permissions = { Manifest.permission.CAMERA };
+	public final static int PERMISSION_DENIED_ERROR = 20;
+	public final static int CAMERA_SEC = 0;
+
+
 	@Override
-	public void initialize(CordovaInterface cordova, CordovaWebView webView) {
-		super.initialize(cordova, webView);
-		// your init code here
+	public void initialize(final CordovaInterface cordova, final CordovaWebView cvWebView) {
+		super.initialize(cordova, cvWebView);
 	}
 
 	@Override
@@ -75,6 +90,12 @@ public class Flashlight extends CordovaPlugin {
 	}
 
 	private void init(final CallbackContext callbackContext) {
+		this.callbackContext = callbackContext;
+
+		if (! PermissionHelper.hasPermission(this, permissions[0])) {
+			PermissionHelper.requestPermission(this, CAMERA_SEC, Manifest.permission.CAMERA);
+			return;
+		}
 
 		JSONObject jsonResult = new JSONObject();
 
@@ -179,7 +200,7 @@ public class Flashlight extends CordovaPlugin {
 
 		if (isDeferred && newLightState == LIGHT_OFF) {
 			//SPECIAL CASE: force the light off for devices that can run light without camera running
-			updateLight(LIGHT_OFF,null);
+			updateLight(LIGHT_OFF, null);
 			return;
 		}
 
@@ -216,7 +237,15 @@ public class Flashlight extends CordovaPlugin {
 
 			if (localPreviewCamera != null) {
 				if (newLightState == LIGHT_ON) {
-					localPreviewCamera.startPreview();
+					try {
+						localPreviewCamera.startPreview();
+						if (hiddenSurfaceTexture == null) {
+							hiddenSurfaceTexture = new SurfaceTexture(0);
+						}
+						localPreviewCamera.setPreviewTexture(hiddenSurfaceTexture);
+					} catch(Exception ex) {
+						callbackContext.error("Unable to start light.");
+					}
 				} else {
 					localPreviewCamera.stopPreview();
 					releaseableCamera = localPreviewCamera;
@@ -240,7 +269,8 @@ public class Flashlight extends CordovaPlugin {
 	public void onPause(boolean multitasking) {
 		super.onPause((multitasking));
 
-		isPaused = true;
+		/*
+        isPaused = true;
 		if (lightState == LIGHT_ON) {
 			if (localPreviewCamera != null) {
 				updateLight(LIGHT_OFF,null);
@@ -248,13 +278,15 @@ public class Flashlight extends CordovaPlugin {
 			}
 		}
 		//todo: turn off light & release camera
+        */
 	}
 
 	@Override
 	public void onResume(boolean multitasking) {
 		super.onResume(multitasking);
 
-		if (isPaused) {
+		/*
+        if (isPaused) {
 			if (lightState == LIGHT_ON) {
 				if (isVOInstalled()) {
 					updateLightWithVO(LIGHT_ON,null);
@@ -266,6 +298,23 @@ public class Flashlight extends CordovaPlugin {
 		isPaused = false;
 
 		//todo: reacquire camera and setup light
+        */
+	}
+
+	//copied from Apache Cordova plugin
+	public void onRequestPermissionResult(int requestCode, String[] permissions,
+										  int[] grantResults) throws JSONException {
+		for(int r:grantResults) {
+			if(r == PackageManager.PERMISSION_DENIED) {
+				this.callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, PERMISSION_DENIED_ERROR));
+				return;
+			}
+		}
+		switch(requestCode) {
+			case CAMERA_SEC:
+				init(this.callbackContext);
+				break;
+		}
 	}
 
 	//------------------------------------------------------------------
