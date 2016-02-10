@@ -34,10 +34,6 @@
 		<framework src="UIKit.framework" />
 		<framework src="Foundation.framework" />
 		<framework src="AVFoundation.framework" />
-		<!--
-		<framework src="CoreImage.framework" />
-		<framework src="CoreVideo.framework" />
-		-->
 	</platform>
 	
 	<!-- android -->
@@ -49,10 +45,13 @@
 	  </config-file>
 	  <config-file target="AndroidManifest.xml" parent="/*">
 			<uses-permission android:name="android.permission.CAMERA" />
+            <uses-permission android:name="android.permission.FLASHLIGHT" />
 			<uses-feature android:name="android.hardware.camera" />
+            <uses-feature android:name="android.hardware.camera.flash" /> 
 	  </config-file>
 	  <config-file target="AndroidManifest.xml" parent="/*"/>
 	  <source-file src="src/android/Flashlight.java" target-dir="src/com/ezartech/ezar/flashlight" />
+      <source-file src="src/android/PermissionHelper.java" target-dir="src/com/ezartech/ezar/flashlight" />
   </platform>
 
 </plugin>
