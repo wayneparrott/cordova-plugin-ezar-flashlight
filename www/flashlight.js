@@ -11,44 +11,41 @@
 var exec = require('cordova/exec'),
     utils = require('cordova/utils');
 
-/**
- * Manages a mobile device camera
- * @class
- * 
- * Created by ezar during initialization. Do not use directly.
- * 
- * @param {ezAR} ezar  protected 
- * @param {string} id  unique camera id assigned by the device os
- * @param {string} position  side of the device the camera resides, BACK
- * 			faces away from the user, FRONT faces the user
- * @param {boolean} hasZoom  true if the camera's magnification can be changed
- * @param {float} zoom  current magnification level of the camera up 
- * 			to the maxZoom
- * @param {boolean} hasLight true when the device has a light on the
- * 			same side as the camera position; false otherwise
- * @param {integer} light  if the device has a light on the same side 
- * 			(position) as the camera then 1 turns on the device light, 
- * 			0 turns the light off
- */
 module.exports = (function() {
 	 //--------------------------------------
-    var BACK = 0, FRONT = 1; //light locations
-	var UNDEFINED = -1, OFF = 0, ON = 1;     //light states
+	var UNDEFINED = -1, LIGHT_OFF = 0, LIGHT_ON = 1;     //light states
 	
 	var _flashlight       = {};
-	var _isInitialized    = false;
-	var _frontLightState  = UNDEFINED;
-	var _backLightState   = UNDEFINED;	    
+	var _isInitialized    = false;;
+	var _lightState       = UNDEFINED;	    
 	
 	
-    _flashlight.areLightsInitialized = function() {
+    _flashlight.isLightInitialized = function() {
         return _isInitialized;
     }
-   
-  
-    _flashlight.initializeLights = function(successCallback,errorCallback) {
+
+	/**
+	* Manages a mobile device lights
+	* @class
+	* 
+	* Created by ezar flashlight during initialization. Do not use directly.
+	* 
+	* @param {ezAR} ezar  protected 
+	* @param {string} id  unique camera id assigned by the device os
+	* @param {string} position  side of the device the camera resides, BACK
+	* 			faces away from the user, FRONT faces the user
+	* @param {boolean} hasZoom  true if the camera's magnification can be changed
+	* @param {float} zoom  current magnification level of the camera up 
+	* 			to the maxZoom
+	* @param {boolean} hasLight true when the device has a light on the
+	* 			same side as the camera position; false otherwise
+	* @param {integer} light  if the device has a light on the same side 
+	* 			(position) as the camera then 1 turns on the device light, 
+	* 			0 turns the light off
+	*/  
+    _flashlight.initializeLight = function(successCallback,errorCallback) {
         //execute successCallback immediately if already initialized
-    	if (_flashlight.areLightsInitialized()) {
+    	if (_flashlight.isLightInitialized()) {
            if (isFunction(successCallback)) successCallback();
            return;
         }
@@ -58,8 +55,10 @@ module.exports = (function() {
             _isInitialized = true;
 			
 			//todo init state here
-			_frontLightState = lightData.front ? OFF : UNDEFINED;
-			_backLightState = lightData.back ? OFF : UNDEFINED;
+			_lightState = lightData.back ? LIGHT_OFF : UNDEFINED;
+			
+			document.addEventListener("pause", onPause, false);
+			document.addEventListener("resume", onResume, false);
 			
             if (successCallback) {
                 successCallback();
@@ -73,82 +72,68 @@ module.exports = (function() {
             []);
     }
 	
-    
-    
-     _flashlight.hasFrontLight = function() {
-		 return _frontLightState != UNDEFINED;
-	 }
-	 
-    
- 	
-	 _flashlight.hasBackLight = function() {
-		 return _backLightState != UNDEFINED;
-	 }
-	 
-
-	 _flashlight.isBackLightOn = function() {
-		 return _backLightState == ON;
-	 }
-	 
-
-	 _flashlight.isFrontLightOn = function() {
-		 return _frontLightState == ON;
-	 }
-	 
-
-     _flashlight.setBackLightOn = function(successCallback,errorCallback) {
-		 updateLight(BACK,ON,successCallback,errorCallback);
-	 }
-	 
-	 _flashlight.setFrontLightOn = function(successCallback,errorCallback) {
-		 updateLight(FRONT,ON,successCallback,errorCallback);
-	 }
-  
-  	function getCurrentOnLight() {
-		  if (_flashlight.isFrontLightOn()) {
-			  return FRONT;
-		  } else  if (_flashlight.isBackLightOn()) {
-			  return BACK;
-		  } 
-		  
-		  return UNDEFINED;
-	  }
-
-	_flashlight.setCurrentLightOff = function(successCallback,errorCallback) {
-		var curLightOn = getCurrentOnLight();
-		if (curLightOn==UNDEFINED) return;
+	function onPause() {
+		if (_lightState == LIGHT_ON) {
+			_flashlight.setLightOff(
+			    function(result) {
+					_lightState = LIGHT_ON;
+				});
+		}
+	}
+	
+	function onResume() {
+		if (_lightState == LIGHT_ON) {
+			_lightState = LIGHT_OFF;
+			_flashlight.setLightOn();	
+		}
 		
-		updateLight(curLightOn,OFF,successCallback,errorCallback);
+	}
+    	 
+    /**
+	 * 
+	 */
+	 _flashlight.hasLight = function() {
+		 return _lightState != UNDEFINED;
+	 }
+	 
+
+	 /**
+	  * 
+	  */
+	 _flashlight.isLightOn = function() {
+		 return _lightState == LIGHT_ON;
+	 }
+	 
+	 /**
+	  * 
+	  */
+     _flashlight.setLightOn = function(successCallback,errorCallback) {
+		 updateLight(LIGHT_ON,successCallback,errorCallback);
+	 }
+     
+     /**
+	 * 
+	 */
+	_flashlight.setLightOff = function(successCallback,errorCallback) {
+		
+		updateLight(LIGHT_OFF,successCallback,errorCallback);
 	}
 
  
-	function updateLight(lightPosition, onOffState, successCallback,errorCallback) {
-		if (lightPosition == BACK) {
-		 	if (!_flashlight.hasBackLight()) return;
-			if (_backLightState == onOffState) {
-				if (isFunction(successCallback)) successCallback();
+	function updateLight(onOffState, successCallback,errorCallback) {
+		
+		if (!_flashlight.hasLight()) return;
+		if (_lightState == onOffState) {
+			if (isFunction(successCallback)) successCallback();
 				return;	
-			}
-			
 		}
 		
-		if (lightPosition == FRONT) {
-		 	if (!_flashlight.hasFrontLight()) return;
-			if (_frontLightState == onOffState) {
-				if (isFunction(successCallback)) successCallback();
-				return;
-			}
-		}
-				
-		_frontLightState = _frontLightState == UNDEFINED ? UNDEFINED : OFF;
-		_backLightState = _backLightState == UNDEFINED ? UNDEFINED : OFF;
+        //set default state
+		_lightState = _lightState == UNDEFINED ? UNDEFINED : LIGHT_OFF;
 		 
 		var onSuccess = function() {
             //console.log(deviceData);
-            if (lightPosition == BACK) 
-				_backLightState = onOffState; 
-			else  
-				_frontLightState = onOffState;
+            _lightState = onOffState; 
 			
 			if (successCallback) {
                 successCallback();
@@ -159,7 +144,7 @@ module.exports = (function() {
              errorCallback,
             "flashlight",
             "updateLight",
-            [lightPosition,onOffState]);
+            [onOffState]);
 	 }        
       
        
@@ -167,7 +152,11 @@ module.exports = (function() {
     	return typeof f == "function";
 	}
   
-	
+    // function isAndroidPlatform() {
+    //     return window.cordova.platformId == "android";
+    // }
+    
+    
 	return _flashlight;
 }())
 
