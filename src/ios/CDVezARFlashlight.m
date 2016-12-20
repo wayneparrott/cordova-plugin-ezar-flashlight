@@ -45,13 +45,11 @@ const int LIGHT_ON = 1;
     for (AVCaptureDevice *device in devices) {
         if (error) break;
 
-        BOOL hasDevice = NO;
-        SEL s1 = NSSelectorFromString(@"hasTorch");
-        if ([device respondsToSelector:s1]) {
+        SEL s1 = NSSelectorFromString(@"hasTorch"); //hasTorch, ios 8+
+        if ([device respondsToSelector:s1]) { 
             BOOL (*func)(id, SEL) = (void *)[device methodForSelector:s1];
-            hasDevice = func(device, s1);
-            if (!hasDevice)
-                continue;
+            BOOL hasTorch = func(device, s1);
+            if (!hasTorch) continue;
         } else if (![device isTorchModeSupported:AVCaptureTorchModeOn]) 
             continue;
         
