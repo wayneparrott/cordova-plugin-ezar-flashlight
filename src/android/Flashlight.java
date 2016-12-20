@@ -51,6 +51,7 @@ public class Flashlight extends CordovaPlugin {
 
     private int cameraId   = UNDEFINED;
     private int lightState 	= LIGHT_OFF;
+	private String torchOnMode = null; //device specific torchmode used when turning light on
 
 	private CallbackContext callbackContext;
 
@@ -132,12 +133,21 @@ public class Flashlight extends CordovaPlugin {
 					parameters = camera.getParameters();
 
 					List<String>torchModes = parameters.getSupportedFlashModes();
-					boolean hasLight = torchModes != null && torchModes.contains(Parameters.FLASH_MODE_TORCH);
+					boolean hasLight = torchModes != null && 
+						(torchModes.contains(Parameters.FLASH_MODE_TORCH) ||
+						 torchModes.contains(Parameters.FLASH_MODE_ON));
 
 					if (hasLight) {
 						String key="back";
 						cameraId = id;
-;
+
+						//remember the specific mode for turning light on
+						if (torchModes.contains(Parameters.FLASH_MODE_TORCH)) {
+							torchOnMode = Parameters.FLASH_MODE_TORCH;
+						} else {
+							torchOnMode = Parameters.FLASH_MODE_ON;
+						}
+
 						jsonResult.put(key,true);
 					}
 
@@ -209,7 +219,7 @@ public class Flashlight extends CordovaPlugin {
 			Parameters parameters;
 			parameters = voCamera.getParameters();
 			parameters.setFlashMode(newLightState == LIGHT_ON ?
-					Parameters.FLASH_MODE_TORCH :
+					torchOnMode :   //FLASH_MODE_TORCH or  FLASH_MODE_ON
 					Parameters.FLASH_MODE_OFF);
 			voCamera.setParameters(parameters);
 		}
@@ -231,7 +241,7 @@ public class Flashlight extends CordovaPlugin {
 			Parameters parameters;
 			parameters = localPreviewCamera.getParameters();
 			parameters.setFlashMode(newLightState == LIGHT_ON ?
-					Parameters.FLASH_MODE_TORCH :
+					torchOnMode :  //FLASH_MODE_TORCH or FLASH_MODE_ON
 					Parameters.FLASH_MODE_OFF);
 			localPreviewCamera.setParameters(parameters);
 
