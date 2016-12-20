@@ -44,7 +44,15 @@ const int LIGHT_ON = 1;
     NSArray *devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
     for (AVCaptureDevice *device in devices) {
         if (error) break;
-        if (!([device isTorchAvailable] && [device isTorchModeSupported:AVCaptureTorchModeOn])) 
+
+        BOOL hasDevice = NO;
+        SEL s1 = NSSelectorFromString(@"hasTorch");
+        if ([device respondsToSelector:s1]) {
+            BOOL (*func)(id, SEL) = (void *)[device methodForSelector:s1];
+            hasDevice = func(device, s1);
+            if (!hasDevice)
+                continue;
+        } else if (![device isTorchModeSupported:AVCaptureTorchModeOn]) 
             continue;
         
         if ([device position] == AVCaptureDevicePositionBack) {
