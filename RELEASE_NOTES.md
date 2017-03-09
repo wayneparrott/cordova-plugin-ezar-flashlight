@@ -1,12 +1,12 @@
 #ezAR Flashlight Plugin Release Notes
 
 ##0.2.2 (20161229)
-1. added additional flash detection for android and iOS devices 
+1. added additional flash detection for android and iOS devices.
 
 
 ##0.2.1 (20160310)
 Minor changes: 
-1. added this RELEASE_NOTES doc 
+1. added this RELEASE_NOTES doc.
 
 
 ##0.2.0 (20160302-1)
