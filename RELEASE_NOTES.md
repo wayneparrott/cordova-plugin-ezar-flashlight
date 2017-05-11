@@ -1,5 +1,9 @@
 #ezAR Flashlight Plugin Release Notes
 
+##0.2.3 (20170511)
+1. Added package.json for Cordova 7 compliance.
+
+
 ##0.2.2 (20161229)
 1. added additional flash detection for android and iOS devices.
 

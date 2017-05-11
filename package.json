@@ -1,6 +1,6 @@
 {
   "name": "com.ezartech.ezar.flashlight",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Control the front and back flashlights on a device",
   "cordova": {
     "id": "com.ezartech.ezar.flashlight",
