@@ -1,0 +1,25 @@
+{
+  "name": "com.ezartech.ezar.flashlight",
+  "version": "0.2.2",
+  "description": "Control the front and back flashlights on a device",
+  "cordova": {
+    "id": "com.ezartech.ezar.flashlight",
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  },
+  "keywords": [
+    "flashlight",
+    "light",
+    "ecosystem:cordova",
+    "cordova-ios",
+    "cordova-android"
+  ], 
+  "author": "Wayne Parrott",
+  "license": "modified MIT License, see http://ezartech.com/ezarstartupkit-license",
+  "bugs": {
+    "url": "https://support.ezartech.com"
+  },
+  "homepage": "https://ezartech.com"
+}
