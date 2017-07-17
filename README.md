@@ -18,7 +18,7 @@ preview is stopped.
 ##Getting Started
 Add the flashlight plugin to your Corodva project the Cordova CLI.
 
-        cordova plugin add pathToEzar/com.ezartech.ezar.flashlight
+        cordova plugin add cordova-plugin-ezar-flashlight
 
 Next initialize the Flashlight plugin and turn the light on.
 
@@ -46,6 +46,6 @@ See [ezartech.com](http://ezartech.com) for documentation and support.
 The ezAR Snapshot is licensed under a [modified MIT license](http://www.ezartech.com/ezarstartupkit-license).
 
 
-Copyright (c) 2015-2016, ezAR Technologies
+Copyright (c) 2015-2017, ezAR Technologies
 
 

@@ -4,10 +4,10 @@
 -->
 <plugin xmlns="http://cordova.apache.org/ns/plugins/1.0"
 	  xmlns:android="http://schemas.android.com/apk/res/android"
-	  id="com.ezartech.ezar.flashlight"
-	  version="0.2.3">
+	  id="cordova-plugin-ezar-flashlight"
+	  version="1.0.0">
 	  
-	<name>ezAR Flashlight</name>
+	<name>ezAR Flashlight Plugin</name>
 	<description>Control the front and back flashlights on a device  
 	</description>
 	<keywords>flashlight, light</keywords>
