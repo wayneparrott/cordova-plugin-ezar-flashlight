@@ -1,5 +1,5 @@
 {
-  "name": "ezAR Flashlight Plugin",
+  "name": "cordova-plugin-ezar-flashlight",
   "version": "1.0.0",
   "description": "Control the front and back flashlights on a device",
   "cordova": {
@@ -12,7 +12,6 @@
   "keywords": [
     "flashlight",
     "light",
-    "ecosystem:cordova",
     "cordova-ios",
     "cordova-android"
   ], 
