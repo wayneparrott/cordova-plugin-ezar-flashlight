@@ -1,4 +1,6 @@
-#ezAR Flashlight Cordova Plugin
+Deprecated - no longer supported.
+
+#ezAR Flashlight Cordova Plugin   
 Control the on/off state of the light on a mobile device. This plugin works with  
 or without the VideoOverlay plugin. 
 
